@@ -1,0 +1,14 @@
+Thank you for installing {{ .Chart.Name }}. Your release is named {{ .Release.Name }}.
+
+KeyDB is available on port {{ .Values.keydb.port }} with DNS name
+{{ template "keydb.fullname" . }}.{{ .Release.Namespace }}.svc.
+from within your cluster for both read and write.
+
+You can access KeyDB from your current command line with:
+  $ kubectl port-forward svc/{{ template "keydb.fullname" . }} {{ .Values.keydb.port }} &
+  $ redis-cli
+
+To learn more about this release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
