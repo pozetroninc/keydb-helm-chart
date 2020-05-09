@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "keydb.fullname" . }}
+  labels:
+    {{- include "keydb.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "keydb.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "keydb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "keydb.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "keydb.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - keydb-server
+          - /etc/keydb/keydb.conf
+          - --active-replica {{ .Values.keydb.activereplica }}
+          - --multi-master {{ .Values.keydb.multimaster }}
+          - --appendonly {{ .Values.keydb.appendonly }}
+          - --bind 0.0.0.0
+          - --port "6379"
+          - --protected-mode no
+          - --server-threads {{ .Values.keydb.threads | int }}
+          {{- if .Values.keydb.module }}
+          - --loadmodule /usr/lib/redis/modules/{{ .Values.keydb.module }}
+          {{- end }}
+          {{- if .Values.keydb.password }}
+          - --masterauth {{ .Values.keydb.password }}
+          - --requirepass {{ .Values.keydb.password }}
+          {{- end }}
+            {{- range $key, $value := .Values.keydb.extraArgs }}
+              {{- if $value }}
+          - --{{ $key }} {{ $value }}
+              {{- else }}
+          - --{{ $key }}
+              {{- end }}
+            {{- end }}
+            {{- range $replicaCount, $e := until (.Values.replicaCount|int) }}
+          - --replicaof {{ include "keydb.fullname" $ }}-{{ $replicaCount }}.{{ include "keydb.fullname" $ }} 6379
+            {{- end }}
+          {{- if .Values.persistence.enabled }}
+          - --dir /data
+          {{ end }}
+          ports:
+          - name: keydb
+            containerPort: 6379
+            protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: keydb
+          readinessProbe:
+            tcpSocket:
+              port: keydb
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: keydb-data
+            mountPath: /data
+      {{- if not .Values.persistence.enabled }}
+      volumes:
+      - name: keydb-data
+        emptyDir: {}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  volumeClaimTemplates:
+  - metadata:
+      name: keydb-data
+    {{- if .Values.persistence.annotations }}
+      annotations:
+        {{ toYaml .Values.persistence.annotations | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "keydb.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+        - {{ .Values.persistence.accessMode | quote }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size | quote }}
+    {{- if .Values.persistence.storageClass }}
+    {{- if (eq "-" .Values.persistence.storageClass) }}
+      storageClassName: ""
+    {{- else }}
+      storageClassName: "{{ .Values.persistence.storageClass }}"
+    {{- end }}
+    {{- end }}
+  {{- end }}

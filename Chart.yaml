@@ -1,0 +1,12 @@
+apiVersion: v2
+appVersion: v5.3.3
+description: A Helm chart for multimaster KeyDB optionally with a module loaded
+icon: https://keydb.dev/assets/ico/keydb_logo_bwtxtw.png
+keywords:
+- keydb
+- redis
+- database
+- multimaster
+name: keydb
+type: application
+version: 0.5.0

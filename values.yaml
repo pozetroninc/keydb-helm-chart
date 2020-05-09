@@ -1,0 +1,108 @@
+# Default values for keydb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates
+
+replicaCount: 3
+
+keydb:
+  password: "thanks@jdsully"
+  port: 6379
+  threads: 2
+  activereplica: "yes"
+  multimaster: "yes"
+  appendonly: "no"
+#  module: "redistimeseries.so"
+# Extra arguments for keydb-server
+  extraArgs: {}
+#    loglevel: debug
+
+image:
+  repository: pozetroninc/keydb
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "" # "v5.3.3"
+
+persistence:
+  enabled: false
+# Annotations to add on persistence resources
+#  annotations: {}
+# Storage settings to create a PV and PVC
+#  size: 1G
+# For no storage class enter "-", empty or not specifying will result in default storage class
+#  storageClass: hostpath
+#  accessMode: ReadWriteOnce
+# Specify if PVC already exists
+#  existingClaim: NameOfExistingPVC
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+  # sysctls:
+  # - name: net.core.somaxconn
+  #   value: "512"
+  # - name: vm.overcommit_memory
+  #   value: "1"
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: keydb-example.local
+      paths: []
+  tls: []
+  #  - secretName: keydb-example-tls
+  #    hosts:
+  #      - keydb-example.local
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+# This tries to avoid having two (or more) pods on the same node as well as
+# trying to spread them out over different cloud provider zones.
+affinity:
+    podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+                matchLabels:
+                    app.kubernetes.io/name: keydb
+            topologyKey: "topology.kubernetes.io/zone"
+          weight: 100
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+                app.kubernetes.io/name: keydb
+          topologyKey: "kubernetes.io/hostname"
